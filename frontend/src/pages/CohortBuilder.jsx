@@ -13,7 +13,7 @@ export default function CohortBuilder() {
   useEffect(() => {
     let cancelled = false;
     setStatus('loading');
-    apiGet('/health')
+    apiGet('/api/health')
       .then(() => !cancelled && setStatus('ready'))
       .catch(() => !cancelled && setStatus('error'));
     return () => {

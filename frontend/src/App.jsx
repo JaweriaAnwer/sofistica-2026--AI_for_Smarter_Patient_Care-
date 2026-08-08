@@ -6,7 +6,7 @@ import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
 import CohortBuilder from './pages/CohortBuilder';
 import DataQuality from './pages/DataQuality';
-import Coverage from './pages/Coverage';
+import CoverageExplorer from './pages/CoverageExplorer';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -23,7 +23,7 @@ function AnimatedRoutes() {
           <Route path="/" element={<Home />} />
           <Route path="/cohort" element={<CohortBuilder />} />
           <Route path="/quality" element={<DataQuality />} />
-          <Route path="/coverage" element={<Coverage />} />
+          <Route path="/coverage" element={<CoverageExplorer />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </motion.div>
