@@ -1,0 +1,512 @@
+{
+  "database": "MIMIC-IV Clinical Database Demo v2.2",
+  "source": "https://physionet.org/content/mimic-iv-demo/2.2/",
+  "doi": "10.13026/dp1f-ex47",
+  "patient_count": 100,
+  "description": "Deidentified hospital and ICU records for 100 patients from Beth Israel Deaconess Medical Center. Dates are shifted. No free-text clinical notes.",
+  "modules": {
+    "hosp": "Hospital-wide EHR data: admissions, labs, medications, diagnoses, procedures",
+    "icu": "ICU-specific data from MetaVision: vitals, inputs/outputs, procedures"
+  },
+  "tables": [
+    {
+      "name": "patients",
+      "module": "hosp",
+      "description": "Core demographics for each patient. One row per patient.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Unique patient identifier", "nullable": false},
+        {"name": "gender", "type": "TEXT", "description": "Patient gender: M or F", "nullable": false},
+        {"name": "anchor_age", "type": "INTEGER", "description": "Patient age at anchor_year (de-identified reference age)", "nullable": false},
+        {"name": "anchor_year", "type": "INTEGER", "description": "De-identified reference year", "nullable": false},
+        {"name": "anchor_year_group", "type": "TEXT", "description": "Anchor year range group (e.g. 2011-2013)", "nullable": false},
+        {"name": "dod", "type": "TEXT", "description": "Date of death (NULL if alive or unknown)", "nullable": true}
+      ],
+      "primary_key": "subject_id"
+    },
+    {
+      "name": "admissions",
+      "module": "hosp",
+      "description": "Hospital admission records. One row per hospital stay.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Unique hospital admission identifier", "nullable": false},
+        {"name": "admittime", "type": "TEXT", "description": "Admission date and time", "nullable": false},
+        {"name": "dischtime", "type": "TEXT", "description": "Discharge date and time", "nullable": false},
+        {"name": "deathtime", "type": "TEXT", "description": "Time of in-hospital death (NULL if survived)", "nullable": true},
+        {"name": "admission_type", "type": "TEXT", "description": "Type of admission (EMERGENCY, ELECTIVE, etc.)", "nullable": false},
+        {"name": "admit_provider_id", "type": "TEXT", "description": "Admitting provider identifier", "nullable": true},
+        {"name": "admission_location", "type": "TEXT", "description": "Location prior to admission", "nullable": true},
+        {"name": "discharge_location", "type": "TEXT", "description": "Discharge destination", "nullable": true},
+        {"name": "insurance", "type": "TEXT", "description": "Insurance type", "nullable": true},
+        {"name": "language", "type": "TEXT", "description": "Patient language", "nullable": true},
+        {"name": "marital_status", "type": "TEXT", "description": "Marital status", "nullable": true},
+        {"name": "race", "type": "TEXT", "description": "Patient race/ethnicity", "nullable": true},
+        {"name": "edregtime", "type": "TEXT", "description": "ED registration time", "nullable": true},
+        {"name": "edouttime", "type": "TEXT", "description": "ED departure time", "nullable": true},
+        {"name": "hospital_expire_flag", "type": "INTEGER", "description": "1 if died during this admission, 0 otherwise", "nullable": false}
+      ],
+      "primary_key": "hadm_id",
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"}
+      ]
+    },
+    {
+      "name": "transfers",
+      "module": "hosp",
+      "description": "Patient physical location changes within the hospital.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": true},
+        {"name": "transfer_id", "type": "INTEGER", "description": "Unique transfer identifier", "nullable": false},
+        {"name": "eventtype", "type": "TEXT", "description": "admit, transfer, or discharge", "nullable": false},
+        {"name": "careunit", "type": "TEXT", "description": "Care unit name", "nullable": true},
+        {"name": "intime", "type": "TEXT", "description": "Time of entry to unit", "nullable": false},
+        {"name": "outtime", "type": "TEXT", "description": "Time of exit from unit", "nullable": true}
+      ],
+      "primary_key": "transfer_id",
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"}
+      ]
+    },
+    {
+      "name": "diagnoses_icd",
+      "module": "hosp",
+      "description": "Billed ICD diagnosis codes for each hospital admission.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "seq_num", "type": "INTEGER", "description": "Priority sequence for diagnosis", "nullable": false},
+        {"name": "icd_code", "type": "TEXT", "description": "ICD diagnosis code (ICD-9 or ICD-10)", "nullable": false},
+        {"name": "icd_version", "type": "INTEGER", "description": "ICD version: 9 or 10", "nullable": false}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"},
+        {"column": "icd_code", "references": "d_icd_diagnoses.icd_code"}
+      ]
+    },
+    {
+      "name": "d_icd_diagnoses",
+      "module": "hosp",
+      "description": "Dictionary of ICD diagnosis codes and their long descriptions.",
+      "columns": [
+        {"name": "icd_code", "type": "TEXT", "description": "ICD code", "nullable": false},
+        {"name": "icd_version", "type": "INTEGER", "description": "ICD version: 9 or 10", "nullable": false},
+        {"name": "long_title", "type": "TEXT", "description": "Full text description of the diagnosis", "nullable": false}
+      ],
+      "primary_key": "icd_code, icd_version"
+    },
+    {
+      "name": "procedures_icd",
+      "module": "hosp",
+      "description": "Billed ICD procedure codes for each hospital admission.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "seq_num", "type": "INTEGER", "description": "Priority sequence for procedure", "nullable": false},
+        {"name": "icd_code", "type": "TEXT", "description": "ICD procedure code", "nullable": false},
+        {"name": "icd_version", "type": "INTEGER", "description": "ICD version: 9 or 10", "nullable": false},
+        {"name": "chartdate", "type": "TEXT", "description": "Date procedure was charted", "nullable": false}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"},
+        {"column": "icd_code", "references": "d_icd_procedures.icd_code"}
+      ]
+    },
+    {
+      "name": "d_icd_procedures",
+      "module": "hosp",
+      "description": "Dictionary of ICD procedure codes and their descriptions.",
+      "columns": [
+        {"name": "icd_code", "type": "TEXT", "description": "ICD procedure code", "nullable": false},
+        {"name": "icd_version", "type": "INTEGER", "description": "ICD version: 9 or 10", "nullable": false},
+        {"name": "long_title", "type": "TEXT", "description": "Full text description of the procedure", "nullable": false}
+      ],
+      "primary_key": "icd_code, icd_version"
+    },
+    {
+      "name": "labevents",
+      "module": "hosp",
+      "description": "Laboratory test results. High-volume table with one row per lab measurement.",
+      "columns": [
+        {"name": "labevent_id", "type": "INTEGER", "description": "Unique lab event identifier", "nullable": false},
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": true},
+        {"name": "specimen_id", "type": "INTEGER", "description": "Specimen identifier", "nullable": false},
+        {"name": "itemid", "type": "INTEGER", "description": "Lab test identifier (join to d_labitems)", "nullable": false},
+        {"name": "charttime", "type": "TEXT", "description": "Time the specimen was charted", "nullable": false},
+        {"name": "storetime", "type": "TEXT", "description": "Time the result was stored", "nullable": true},
+        {"name": "value", "type": "TEXT", "description": "Lab result value (may be text or numeric)", "nullable": true},
+        {"name": "valuenum", "type": "REAL", "description": "Numeric lab result (NULL if non-numeric)", "nullable": true},
+        {"name": "valueuom", "type": "TEXT", "description": "Unit of measurement", "nullable": true},
+        {"name": "ref_range_lower", "type": "REAL", "description": "Lower reference range", "nullable": true},
+        {"name": "ref_range_upper", "type": "REAL", "description": "Upper reference range", "nullable": true},
+        {"name": "flag", "type": "TEXT", "description": "Abnormal flag (abnormal, delta, etc.)", "nullable": true},
+        {"name": "priority", "type": "TEXT", "description": "Priority of the test", "nullable": true},
+        {"name": "comments", "type": "TEXT", "description": "Lab comments", "nullable": true}
+      ],
+      "primary_key": "labevent_id",
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"},
+        {"column": "itemid", "references": "d_labitems.itemid"}
+      ]
+    },
+    {
+      "name": "d_labitems",
+      "module": "hosp",
+      "description": "Dictionary of laboratory test items with labels and categories.",
+      "columns": [
+        {"name": "itemid", "type": "INTEGER", "description": "Lab test identifier", "nullable": false},
+        {"name": "label", "type": "TEXT", "description": "Lab test name", "nullable": false},
+        {"name": "fluid", "type": "TEXT", "description": "Specimen fluid type (Blood, Urine, etc.)", "nullable": true},
+        {"name": "category", "type": "TEXT", "description": "Lab category (Chemistry, Hematology, etc.)", "nullable": true}
+      ],
+      "primary_key": "itemid"
+    },
+    {
+      "name": "prescriptions",
+      "module": "hosp",
+      "description": "Medication prescriptions ordered during hospital stay.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "pharmacy_id", "type": "INTEGER", "description": "Pharmacy identifier", "nullable": true},
+        {"name": "poe_id", "type": "TEXT", "description": "Provider order entry identifier", "nullable": true},
+        {"name": "poe_seq", "type": "INTEGER", "description": "POE sequence number", "nullable": true},
+        {"name": "starttime", "type": "TEXT", "description": "Prescription start time", "nullable": true},
+        {"name": "stoptime", "type": "TEXT", "description": "Prescription stop time", "nullable": true},
+        {"name": "drug_type", "type": "TEXT", "description": "Type of drug", "nullable": true},
+        {"name": "drug", "type": "TEXT", "description": "Drug name", "nullable": true},
+        {"name": "formulary_drug_cd", "type": "TEXT", "description": "Formulary drug code", "nullable": true},
+        {"name": "gsn", "type": "TEXT", "description": "Generic Sequence Number", "nullable": true},
+        {"name": "ndc", "type": "TEXT", "description": "National Drug Code", "nullable": true},
+        {"name": "prod_strength", "type": "TEXT", "description": "Product strength", "nullable": true},
+        {"name": "form_rx", "type": "TEXT", "description": "Prescription form", "nullable": true},
+        {"name": "dose_val_rx", "type": "TEXT", "description": "Dose value", "nullable": true},
+        {"name": "dose_unit_rx", "type": "TEXT", "description": "Dose unit", "nullable": true},
+        {"name": "form_val_disp", "type": "TEXT", "description": "Dispensed form value", "nullable": true},
+        {"name": "form_unit_disp", "type": "TEXT", "description": "Dispensed form unit", "nullable": true},
+        {"name": "doses_per_24_hrs", "type": "REAL", "description": "Number of doses per 24 hours", "nullable": true},
+        {"name": "route", "type": "TEXT", "description": "Administration route", "nullable": true}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"}
+      ]
+    },
+    {
+      "name": "icustays",
+      "module": "icu",
+      "description": "ICU stay records. One row per ICU stay.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "stay_id", "type": "INTEGER", "description": "Unique ICU stay identifier", "nullable": false},
+        {"name": "first_careunit", "type": "TEXT", "description": "First ICU care unit", "nullable": false},
+        {"name": "last_careunit", "type": "TEXT", "description": "Last ICU care unit", "nullable": false},
+        {"name": "intime", "type": "TEXT", "description": "ICU admission time", "nullable": false},
+        {"name": "outtime", "type": "TEXT", "description": "ICU discharge time", "nullable": false},
+        {"name": "los", "type": "REAL", "description": "Length of ICU stay in fractional days", "nullable": false}
+      ],
+      "primary_key": "stay_id",
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"}
+      ]
+    },
+    {
+      "name": "chartevents",
+      "module": "icu",
+      "description": "Bedside charted observations in the ICU (vitals, assessments). High-volume table.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "stay_id", "type": "INTEGER", "description": "ICU stay identifier", "nullable": false},
+        {"name": "caregiver_id", "type": "INTEGER", "description": "Caregiver who recorded the observation", "nullable": true},
+        {"name": "charttime", "type": "TEXT", "description": "Time of the observation", "nullable": false},
+        {"name": "storetime", "type": "TEXT", "description": "Time the observation was stored", "nullable": true},
+        {"name": "itemid", "type": "INTEGER", "description": "Item identifier (join to d_items)", "nullable": false},
+        {"name": "value", "type": "TEXT", "description": "Observed value (text)", "nullable": true},
+        {"name": "valuenum", "type": "REAL", "description": "Numeric observed value", "nullable": true},
+        {"name": "valueuom", "type": "TEXT", "description": "Unit of measurement", "nullable": true},
+        {"name": "warning", "type": "INTEGER", "description": "Warning flag", "nullable": true}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"},
+        {"column": "stay_id", "references": "icustays.stay_id"},
+        {"column": "itemid", "references": "d_items.itemid"}
+      ]
+    },
+    {
+      "name": "d_items",
+      "module": "icu",
+      "description": "Dictionary of ICU charted item definitions.",
+      "columns": [
+        {"name": "itemid", "type": "INTEGER", "description": "Item identifier", "nullable": false},
+        {"name": "label", "type": "TEXT", "description": "Item label/name", "nullable": false},
+        {"name": "abbreviation", "type": "TEXT", "description": "Item abbreviation", "nullable": true},
+        {"name": "linksto", "type": "TEXT", "description": "Table this item links to", "nullable": true},
+        {"name": "category", "type": "TEXT", "description": "Item category", "nullable": true},
+        {"name": "unitname", "type": "TEXT", "description": "Unit of measurement", "nullable": true},
+        {"name": "param_type", "type": "TEXT", "description": "Parameter type", "nullable": true},
+        {"name": "lownormalvalue", "type": "REAL", "description": "Lower normal value", "nullable": true},
+        {"name": "highnormalvalue", "type": "REAL", "description": "Upper normal value", "nullable": true}
+      ],
+      "primary_key": "itemid"
+    },
+    {
+      "name": "inputevents",
+      "module": "icu",
+      "description": "Fluid and medication inputs administered to ICU patients.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "stay_id", "type": "INTEGER", "description": "ICU stay identifier", "nullable": false},
+        {"name": "caregiver_id", "type": "INTEGER", "description": "Caregiver identifier", "nullable": true},
+        {"name": "starttime", "type": "TEXT", "description": "Start time of input", "nullable": false},
+        {"name": "endtime", "type": "TEXT", "description": "End time of input", "nullable": false},
+        {"name": "storetime", "type": "TEXT", "description": "Time stored in system", "nullable": true},
+        {"name": "itemid", "type": "INTEGER", "description": "Item identifier", "nullable": false},
+        {"name": "amount", "type": "REAL", "description": "Amount administered", "nullable": true},
+        {"name": "amountuom", "type": "TEXT", "description": "Unit of amount", "nullable": true},
+        {"name": "rate", "type": "REAL", "description": "Rate of administration", "nullable": true},
+        {"name": "rateuom", "type": "TEXT", "description": "Unit of rate", "nullable": true},
+        {"name": "orderid", "type": "INTEGER", "description": "Order identifier", "nullable": true},
+        {"name": "linkorderid", "type": "INTEGER", "description": "Linked order identifier", "nullable": true},
+        {"name": "ordercategoryname", "type": "TEXT", "description": "Order category", "nullable": true},
+        {"name": "secondaryordercategoryname", "type": "TEXT", "description": "Secondary order category", "nullable": true},
+        {"name": "ordercomponenttypedescription", "type": "TEXT", "description": "Component type description", "nullable": true},
+        {"name": "ordercategorydescription", "type": "TEXT", "description": "Order category description", "nullable": true},
+        {"name": "patientweight", "type": "REAL", "description": "Patient weight in kg", "nullable": true},
+        {"name": "totalamount", "type": "REAL", "description": "Total amount ordered", "nullable": true},
+        {"name": "totalamountuom", "type": "TEXT", "description": "Unit of total amount", "nullable": true},
+        {"name": "isopenbag", "type": "INTEGER", "description": "Whether bag is open", "nullable": true},
+        {"name": "continueinnextdept", "type": "INTEGER", "description": "Continue in next department", "nullable": true},
+        {"name": "statusdescription", "type": "TEXT", "description": "Status description", "nullable": true},
+        {"name": "originalamount", "type": "REAL", "description": "Original amount", "nullable": true},
+        {"name": "originalrate", "type": "REAL", "description": "Original rate", "nullable": true}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"},
+        {"column": "stay_id", "references": "icustays.stay_id"},
+        {"column": "itemid", "references": "d_items.itemid"}
+      ]
+    },
+    {
+      "name": "outputevents",
+      "module": "icu",
+      "description": "Patient fluid output in the ICU.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "stay_id", "type": "INTEGER", "description": "ICU stay identifier", "nullable": false},
+        {"name": "caregiver_id", "type": "INTEGER", "description": "Caregiver identifier", "nullable": true},
+        {"name": "charttime", "type": "TEXT", "description": "Time of output measurement", "nullable": false},
+        {"name": "storetime", "type": "TEXT", "description": "Time stored", "nullable": true},
+        {"name": "itemid", "type": "INTEGER", "description": "Item identifier", "nullable": false},
+        {"name": "value", "type": "REAL", "description": "Output value", "nullable": true},
+        {"name": "valueuom", "type": "TEXT", "description": "Unit of measurement", "nullable": true}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"},
+        {"column": "stay_id", "references": "icustays.stay_id"},
+        {"column": "itemid", "references": "d_items.itemid"}
+      ]
+    },
+    {
+      "name": "microbiologyevents",
+      "module": "hosp",
+      "description": "Microbiology culture and sensitivity data.",
+      "columns": [
+        {"name": "microevent_id", "type": "INTEGER", "description": "Unique microbiology event identifier", "nullable": false},
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": true},
+        {"name": "micro_specimen_id", "type": "INTEGER", "description": "Specimen identifier", "nullable": false},
+        {"name": "ordertime", "type": "TEXT", "description": "Order time", "nullable": true},
+        {"name": "chartdate", "type": "TEXT", "description": "Chart date", "nullable": true},
+        {"name": "charttime", "type": "TEXT", "description": "Chart time", "nullable": true},
+        {"name": "spec_itemid", "type": "INTEGER", "description": "Specimen item identifier", "nullable": true},
+        {"name": "spec_type_desc", "type": "TEXT", "description": "Specimen type description", "nullable": true},
+        {"name": "test_seq", "type": "INTEGER", "description": "Test sequence number", "nullable": true},
+        {"name": "storedate", "type": "TEXT", "description": "Store date", "nullable": true},
+        {"name": "storetime", "type": "TEXT", "description": "Store time", "nullable": true},
+        {"name": "test_itemid", "type": "INTEGER", "description": "Test item identifier", "nullable": true},
+        {"name": "test_name", "type": "TEXT", "description": "Test name", "nullable": true},
+        {"name": "org_itemid", "type": "INTEGER", "description": "Organism item identifier", "nullable": true},
+        {"name": "org_name", "type": "TEXT", "description": "Organism name", "nullable": true},
+        {"name": "isolate_num", "type": "INTEGER", "description": "Isolate number", "nullable": true},
+        {"name": "quantity", "type": "TEXT", "description": "Quantity", "nullable": true},
+        {"name": "ab_itemid", "type": "INTEGER", "description": "Antibiotic item identifier", "nullable": true},
+        {"name": "ab_name", "type": "TEXT", "description": "Antibiotic name", "nullable": true},
+        {"name": "dilution_text", "type": "TEXT", "description": "Dilution text", "nullable": true},
+        {"name": "dilution_comparison", "type": "TEXT", "description": "Dilution comparison", "nullable": true},
+        {"name": "dilution_value", "type": "REAL", "description": "Dilution value", "nullable": true},
+        {"name": "interpretation", "type": "TEXT", "description": "Sensitivity interpretation (S/I/R)", "nullable": true},
+        {"name": "comments", "type": "TEXT", "description": "Comments", "nullable": true}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"}
+      ]
+    },
+    {
+      "name": "emar",
+      "module": "hosp",
+      "description": "Electronic Medication Administration Record. Records of when medications were administered.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": true},
+        {"name": "emar_id", "type": "TEXT", "description": "Unique eMAR identifier", "nullable": false},
+        {"name": "emar_seq", "type": "INTEGER", "description": "Sequence number", "nullable": false},
+        {"name": "poe_id", "type": "TEXT", "description": "Provider order entry identifier", "nullable": true},
+        {"name": "pharmacy_id", "type": "INTEGER", "description": "Pharmacy identifier", "nullable": true},
+        {"name": "enter_provider_id", "type": "TEXT", "description": "Provider who entered the record", "nullable": true},
+        {"name": "charttime", "type": "TEXT", "description": "Chart time", "nullable": false},
+        {"name": "medication", "type": "TEXT", "description": "Medication name", "nullable": true},
+        {"name": "event_txt", "type": "TEXT", "description": "Event description", "nullable": true},
+        {"name": "scheduletime", "type": "TEXT", "description": "Scheduled time", "nullable": true},
+        {"name": "storetime", "type": "TEXT", "description": "Store time", "nullable": true}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"}
+      ]
+    },
+    {
+      "name": "services",
+      "module": "hosp",
+      "description": "Hospital service the patient was admitted under.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "transfertime", "type": "TEXT", "description": "Time of service transfer", "nullable": false},
+        {"name": "prev_service", "type": "TEXT", "description": "Previous service", "nullable": true},
+        {"name": "curr_service", "type": "TEXT", "description": "Current service", "nullable": false}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"}
+      ]
+    },
+    {
+      "name": "drgcodes",
+      "module": "hosp",
+      "description": "Diagnosis Related Group codes assigned to hospital stays.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "drg_type", "type": "TEXT", "description": "DRG type (HCFA, APR)", "nullable": false},
+        {"name": "drg_code", "type": "TEXT", "description": "DRG code", "nullable": false},
+        {"name": "description", "type": "TEXT", "description": "DRG description", "nullable": true},
+        {"name": "drg_severity", "type": "INTEGER", "description": "Severity of illness", "nullable": true},
+        {"name": "drg_mortality", "type": "INTEGER", "description": "Risk of mortality", "nullable": true}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"}
+      ]
+    },
+    {
+      "name": "pharmacy",
+      "module": "hosp",
+      "description": "Pharmacy dispensing records.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "pharmacy_id", "type": "INTEGER", "description": "Unique pharmacy identifier", "nullable": false},
+        {"name": "poe_id", "type": "TEXT", "description": "Provider order entry identifier", "nullable": true},
+        {"name": "starttime", "type": "TEXT", "description": "Start time", "nullable": true},
+        {"name": "stoptime", "type": "TEXT", "description": "Stop time", "nullable": true},
+        {"name": "medication", "type": "TEXT", "description": "Medication name", "nullable": true},
+        {"name": "proc_type", "type": "TEXT", "description": "Procedure type", "nullable": true},
+        {"name": "status", "type": "TEXT", "description": "Order status", "nullable": true},
+        {"name": "entertime", "type": "TEXT", "description": "Entry time", "nullable": true},
+        {"name": "verifiedtime", "type": "TEXT", "description": "Verification time", "nullable": true},
+        {"name": "route", "type": "TEXT", "description": "Administration route", "nullable": true},
+        {"name": "frequency", "type": "TEXT", "description": "Dosing frequency", "nullable": true},
+        {"name": "disp_sched", "type": "TEXT", "description": "Dispensing schedule", "nullable": true},
+        {"name": "infusion_type", "type": "TEXT", "description": "Infusion type", "nullable": true},
+        {"name": "sliding_scale", "type": "TEXT", "description": "Sliding scale", "nullable": true},
+        {"name": "lockout_interval", "type": "TEXT", "description": "Lockout interval", "nullable": true},
+        {"name": "basal_rate", "type": "REAL", "description": "Basal rate", "nullable": true},
+        {"name": "one_hr_max", "type": "TEXT", "description": "One hour maximum", "nullable": true},
+        {"name": "doses_per_24_hrs", "type": "REAL", "description": "Doses per 24 hours", "nullable": true},
+        {"name": "duration", "type": "REAL", "description": "Duration", "nullable": true},
+        {"name": "duration_interval", "type": "TEXT", "description": "Duration interval unit", "nullable": true},
+        {"name": "expiration_value", "type": "INTEGER", "description": "Expiration value", "nullable": true},
+        {"name": "expiration_unit", "type": "TEXT", "description": "Expiration unit", "nullable": true},
+        {"name": "expirationdate", "type": "TEXT", "description": "Expiration date", "nullable": true},
+        {"name": "dispensation", "type": "TEXT", "description": "Dispensation type", "nullable": true},
+        {"name": "fill_quantity", "type": "TEXT", "description": "Fill quantity", "nullable": true}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"}
+      ]
+    },
+    {
+      "name": "procedureevents",
+      "module": "icu",
+      "description": "Procedures performed in the ICU recorded in MetaVision.",
+      "columns": [
+        {"name": "subject_id", "type": "INTEGER", "description": "Patient identifier", "nullable": false},
+        {"name": "hadm_id", "type": "INTEGER", "description": "Hospital admission identifier", "nullable": false},
+        {"name": "stay_id", "type": "INTEGER", "description": "ICU stay identifier", "nullable": false},
+        {"name": "caregiver_id", "type": "INTEGER", "description": "Caregiver identifier", "nullable": true},
+        {"name": "starttime", "type": "TEXT", "description": "Start time", "nullable": false},
+        {"name": "endtime", "type": "TEXT", "description": "End time", "nullable": false},
+        {"name": "storetime", "type": "TEXT", "description": "Store time", "nullable": true},
+        {"name": "itemid", "type": "INTEGER", "description": "Item identifier", "nullable": false},
+        {"name": "value", "type": "REAL", "description": "Procedure value", "nullable": true},
+        {"name": "valueuom", "type": "TEXT", "description": "Unit of measurement", "nullable": true},
+        {"name": "location", "type": "TEXT", "description": "Location", "nullable": true},
+        {"name": "locationcategory", "type": "TEXT", "description": "Location category", "nullable": true},
+        {"name": "orderid", "type": "INTEGER", "description": "Order identifier", "nullable": true},
+        {"name": "linkorderid", "type": "INTEGER", "description": "Linked order identifier", "nullable": true},
+        {"name": "ordercategoryname", "type": "TEXT", "description": "Order category", "nullable": true},
+        {"name": "ordercategorydescription", "type": "TEXT", "description": "Category description", "nullable": true},
+        {"name": "patientweight", "type": "REAL", "description": "Patient weight", "nullable": true},
+        {"name": "isopenbag", "type": "INTEGER", "description": "Open bag flag", "nullable": true},
+        {"name": "continueinnextdept", "type": "INTEGER", "description": "Continue flag", "nullable": true},
+        {"name": "statusdescription", "type": "TEXT", "description": "Status description", "nullable": true},
+        {"name": "originalamount", "type": "REAL", "description": "Original amount", "nullable": true},
+        {"name": "originalrate", "type": "REAL", "description": "Original rate", "nullable": true}
+      ],
+      "foreign_keys": [
+        {"column": "subject_id", "references": "patients.subject_id"},
+        {"column": "hadm_id", "references": "admissions.hadm_id"},
+        {"column": "stay_id", "references": "icustays.stay_id"},
+        {"column": "itemid", "references": "d_items.itemid"}
+      ]
+    }
+  ],
+  "key_relationships": [
+    "patients.subject_id -> admissions.subject_id (one patient, many admissions)",
+    "admissions.hadm_id -> diagnoses_icd.hadm_id (one admission, many diagnoses)",
+    "admissions.hadm_id -> procedures_icd.hadm_id (one admission, many procedures)",
+    "admissions.hadm_id -> labevents.hadm_id (one admission, many lab results)",
+    "admissions.hadm_id -> prescriptions.hadm_id (one admission, many prescriptions)",
+    "admissions.hadm_id -> icustays.hadm_id (one admission, potentially multiple ICU stays)",
+    "icustays.stay_id -> chartevents.stay_id (one ICU stay, many chart observations)",
+    "icustays.stay_id -> inputevents.stay_id (one ICU stay, many inputs)",
+    "icustays.stay_id -> outputevents.stay_id (one ICU stay, many outputs)",
+    "d_labitems.itemid -> labevents.itemid (dictionary lookup for lab test names)",
+    "d_items.itemid -> chartevents.itemid (dictionary lookup for ICU item names)",
+    "d_icd_diagnoses.icd_code -> diagnoses_icd.icd_code (dictionary lookup for diagnosis descriptions)"
+  ],
+  "important_notes": [
+    "Dates are shifted for de-identification. Do not infer real calendar dates or seasonality.",
+    "anchor_age in patients table is the age at anchor_year, not current age.",
+    "To calculate age at admission: anchor_age + (YEAR(admittime) - anchor_year).",
+    "ICD codes may be version 9 or 10. Always check icd_version column.",
+    "No free-text clinical notes are included in this dataset.",
+    "This is a 100-patient demo subset, not representative of the full MIMIC-IV population.",
+    "Some tables use itemid (join to d_items for ICU or d_labitems for labs)."
+  ]
+}
