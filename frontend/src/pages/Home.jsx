@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Database, MagnifyingGlassPlus, ChartDonut, ArrowRight, Sparkle } from '@phosphor-icons/react';
 import SpotlightCard from '../components/SpotlightCard';
+import HeartbeatLine from '../components/HeartbeatLine';
 
 const TOOLS = [
   {
@@ -71,6 +72,15 @@ export default function Home() {
           Database Demo — built to make structured hospital data easier to trust, one traceable
           row at a time.
         </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          style={{ display: 'flex', justifyContent: 'center', margin: '20px 0 4px' }}
+        >
+          <HeartbeatLine width={280} height={56} />
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 12 }}
